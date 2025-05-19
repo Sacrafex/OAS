@@ -1,0 +1,119 @@
+{
+    "sections": [
+        {
+            "title": "Autonomous",
+            "fields": [
+                {
+                    "type": "dropdown",
+                    "label": "Starting Position",
+                    "options": ["Red Coral", "Blue Coral", "Central L3"]
+                },
+                {
+                    "type": "counter",
+                    "label": "L4 Nodes Activated"
+                },
+                {
+                    "type": "timer",
+                    "label": "Coral Navigation Time"
+                },
+                {
+                    "type": "counter",
+                    "label": "L3 Precise Placements"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Memory Circuit Engaged"
+                }
+            ]
+        },
+        {
+            "title": "TeleOp",
+            "fields": [
+                {
+                    "type": "counter",
+                    "label": "L4 Elevation Scores"
+                },
+                {
+                    "type": "counter",
+                    "label": "L3 Rapid Placement"
+                },
+                {
+                    "type": "dropdown",
+                    "label": "Coral Zone Priority",
+                    "options": ["Red", "Blue", "Neutral", "Hybrid"]
+                },
+                {
+                    "type": "counter",
+                    "label": "Memory Module Resets"
+                },
+                {
+                    "type": "timer",
+                    "label": "L4 Sustained Balance"
+                }
+            ]
+        },
+        {
+            "title": "Endgame",
+            "fields": [
+                {
+                    "type": "dropdown",
+                    "label": "Final Climb Level",
+                    "options": ["L1", "L2", "L3", "L4", "Coral Summit"]
+                },
+                {
+                    "type": "counter",
+                    "label": "Coral Defense Activations"
+                },
+                {
+                    "type": "timer",
+                    "label": "L4 Lockdown Duration"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Memory Core Secured"
+                }
+            ]
+        },
+        {
+            "title": "Tech Assessment",
+            "fields": [
+                {
+                    "type": "dropdown",
+                    "label": "L4 Consistency",
+                    "options": ["0-25%", "26-50%", "51-75%", "76-100%"]
+                },
+                {
+                    "type": "counter",
+                    "label": "Coral Sensor Errors"
+                },
+                {
+                    "type": "checkbox",
+                    "label": "Rmember Calibration Active"
+                },
+                {
+                    "type": "dropdown",
+                    "label": "L3-L4 Transition Speed",
+                    "options": ["Slow", "Average", "Fast", "Instant"]
+                }
+            ]
+        },
+        {
+            "title": "Strategic Notes",
+            "fields": [
+                {
+                    "type": "text",
+                    "label": "Coral Utilization Strategy"
+                },
+                {
+                    "type": "dropdown",
+                    "label": "L4 Defense Rating",
+                    "options": ["Weak", "Moderate", "Strong", "Impenetrable"]
+                },
+                {
+                    "type": "text",
+                    "label": "Memory System Vulnerabilities"
+                }
+            ]
+        }
+    ]
+}
