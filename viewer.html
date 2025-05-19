@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FRC Data Viewer</title>
+    <title>OAS Data Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root {
             --primary: #00f7ff;
@@ -33,6 +35,12 @@
             margin-bottom: 2rem;
         }
 
+        .view-options {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -53,8 +61,11 @@
             color: #000;
         }
 
-        .data-table tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+        .chart-container {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
         }
 
         input, select, button {
@@ -66,16 +77,9 @@
             margin-right: 1rem;
         }
 
-        button {
-            background: var(--primary);
+        button.active {
+            background: #00ff88;
             color: #000;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        button:hover {
-            opacity: 0.9;
         }
 
         .loading {
@@ -88,21 +92,33 @@
             color: #ff4650;
             margin: 1rem 0;
         }
+
+        .stats-box {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
     </style>
 </head>
 <body>
     <div class="viewer-container">
         <div class="search-box">
-            <h2>FRC Team Data Viewer</h2>
+            <h2>OAS Data Analysis</h2>
             <input type="number" id="teamNumber" placeholder="Team Number" min="1">
             <select id="year">
-                <option value="2024">2028</option>
-                <option value="2024">2027</option>
-                <option value="2023">2026</option>
-                <option value="2022">2025</option>
+                <option value="2028">2028</option>
+                <option value="2027">2027</option>
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
             </select>
-            <button onclick="loadData()">Search</button>
-            <div class="loading" id="loading">Loading data...</div>
+            <button onclick="loadData()">Analyze</button>
+            <div class="view-options">
+                <button onclick="showView('table')" class="active" id="tableBtn">Table</button>
+                <button onclick="showView('chart')" id="chartBtn">Chart</button>
+                <button onclick="showView('stats')" id="statsBtn">Stats</button>
+            </div>
+            <div class="loading" id="loading">Processing data...</div>
             <div class="error" id="error"></div>
         </div>
 
@@ -110,7 +126,14 @@
     </div>
 
     <script>
-        const BASE_URL = 'https://sacrafex.github.io/OpenFRC/data';
+        let currentChart = null;
+        
+        function showView(viewType) {
+            document.querySelectorAll('.view-options button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`${viewType}Btn`).classList.add('active');
+            document.querySelectorAll('.view-container').forEach(el => el.style.display = 'none');
+            document.querySelectorAll(`.${viewType}-view`).forEach(el => el.style.display = 'block');
+        }
 
         async function loadData() {
             const teamNumber = document.getElementById('teamNumber').value;
@@ -129,44 +152,98 @@
             loading.style.display = 'block';
 
             try {
-                const csvUrl = `${BASE_URL}/${year}/${teamNumber}/data.csv`;
+                const csvUrl = `data/${year}/${teamNumber}/data.csv`;
                 const response = await fetch(csvUrl);
                 
-                if (!response.ok) throw new Error('Data not found');
+                if (!response.ok) throw new Error('Dataset not found');
                 
                 const csvData = await response.text();
-                displayData(csvData);
+                const parsedData = Papa.parse(csvData, {header: true}).data;
+                
+                renderViews(parsedData);
             } catch (err) {
-                error.textContent = `Error loading data: ${err.message}`;
+                error.textContent = `Analysis error: ${err.message}`;
             } finally {
                 loading.style.display = 'none';
             }
         }
 
-        function displayData(csv) {
+        function renderViews(data) {
             const results = document.getElementById('results');
-            const rows = csv.split('\n');
-            const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            const data = rows.slice(1);
+            results.innerHTML = `
+                <div class="table-view view-container">
+                    ${renderTableView(data)}
+                </div>
+                <div class="chart-view view-container" style="display:none">
+                    <div class="chart-container">
+                        <canvas id="dataChart"></canvas>
+                    </div>
+                </div>
+                <div class="stats-view view-container" style="display:none">
+                    ${renderStatsView(data)}
+                </div>
+            `;
 
-            let tableHTML = `
+            if(currentChart) currentChart.destroy();
+            currentChart = new Chart(document.getElementById('dataChart'), {
+                type: 'bar',
+                data: formatChartData(data),
+                options: {responsive: true, maintainAspectRatio: false}
+            });
+        }
+
+        function renderTableView(data) {
+            const headers = Object.keys(data[0]);
+            return `
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            ${headers.map(h => `<th>${h}</th>`).join('')}
-                        </tr>
-                    </thead>
+                    <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
                     <tbody>
                         ${data.map(row => `
-                            <tr>
-                                ${row.split(',').map(c => `<td>${c.trim().replace(/"/g, '')}</td>`).join('')}
-                            </tr>
+                            <tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
+        }
 
-            results.innerHTML = tableHTML;
+        function renderStatsView(data) {
+            const numericFields = Object.keys(data[0]).filter(key => 
+                !isNaN(parseFloat(data[0][key])) && isFinite(data[0][key])
+            );
+
+            const stats = numericFields.map(field => {
+                const values = data.map(row => parseFloat(row[field]));
+                return {
+                    field,
+                    avg: values.reduce((a,b) => a + b, 0) / values.length,
+                    max: Math.max(...values),
+                    min: Math.min(...values),
+                    total: values.reduce((a,b) => a + b, 0)
+                };
+            });
+
+            return stats.map(stat => `
+                <div class="stats-box">
+                    <h3>${stat.field}</h3>
+                    <p>Average: ${stat.avg.toFixed(2)}</p>
+                    <p>Maximum: ${stat.max}</p>
+                    <p>Minimum: ${stat.min}</p>
+                    <p>Total: ${stat.total}</p>
+                </div>
+            `).join('');
+        }
+
+        function formatChartData(data) {
+            const labels = Object.keys(data[0]);
+            const datasets = [{
+                label: 'Performance Metrics',
+                data: labels.map(key => 
+                    data.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0)
+                ),
+                backgroundColor: labels.map(() => `hsl(${Math.random()*360}, 70%, 50%)`)
+            }];
+
+            return {labels, datasets};
         }
     </script>
 </body>
