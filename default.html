@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FRC Scout Runner</title>
+    <title>OAS Scout Runner</title>
     <style>
         :root {
             --primary: #00f7ff;
@@ -318,12 +318,18 @@
         function createCSV() {
             const data = collectData();
             const headers = Object.keys(data);
-            const values = headers.map(header => `"${String(data[header]).replace(/"/g, '""')}"`);
+            const values = headers.map(header => {
+                const val = String(data[header]).replace(/"/g, '""');
+                return `"${val}"`;
+            });
             return `${headers.join(',')}\n${values.join(',')}`;
         }
 
         function exportCSV() {
-            if(!document.querySelector('form').reportValidity()) return;
+            if(!document.querySelector('form').reportValidity()) {
+                alert('Please fill out all required fields');
+                return;
+            }
             
             const csvContent = createCSV();
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -331,21 +337,31 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = `scout-data-${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         async function sendToDiscord() {
-            if(!document.querySelector('form').reportValidity()) return;
+            if(!document.querySelector('form').reportValidity()) {
+                alert('Please fill out all required fields');
+                return;
+            }
             
             const webhookUrl = document.getElementById('webhookUrl').value;
-            if(!webhookUrl) return alert('Please configure a webhook URL');
+            if(!webhookUrl) {
+                alert('Please configure a webhook URL');
+                return;
+            }
 
             const csvContent = createCSV();
             const formData = new FormData();
             const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             
+            formData.append('username', 'OAS Scouting System');
             formData.append('file', csvBlob, 'scout-data.csv');
-            formData.append('content', 'New scouting data:');
+            formData.append('content', 'New scouting data submission:');
 
             try {
                 const response = await fetch(webhookUrl, {
@@ -353,7 +369,7 @@
                     body: formData
                 });
 
-                if(!response.ok) throw new Error(`Discord error: ${response.status}`);
+                if(!response.ok) throw new Error(`Discord error: ${response.status} ${response.statusText}`);
                 alert('Data sent to Discord successfully!');
             } catch (error) {
                 alert('Error sending to Discord: ' + error.message);
