@@ -1,97 +1,99 @@
-[
-  {
-    "title": "Record Information",
-    "fields": [
-      {
-        "type": "text",
-        "label": "Name",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "Team Number",
-        "options": []
-      }
+{
+    "sections": [
+        {
+            "title": "Record Information",
+            "fields": [
+                {
+                    "type": "text",
+                    "label": "Name",
+                    "options": []
+                },
+                {
+                    "type": "text",
+                    "label": "Team Number",
+                    "options": []
+                }
+            ]
+        },
+        {
+            "title": "Autos",
+            "fields": [
+                {
+                    "type": "counter",
+                    "label": "L4",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L3",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L2",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L1",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "Algae (Processor)",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "Algae (Net)",
+                    "options": []
+                }
+            ]
+        },
+        {
+            "title": "Teleop",
+            "fields": [
+                {
+                    "type": "counter",
+                    "label": "L4",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L3",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L2",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "L1",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "Algae (Processor)",
+                    "options": []
+                },
+                {
+                    "type": "counter",
+                    "label": "Algae (Net)",
+                    "options": []
+                }
+            ]
+        },
+        {
+            "title": "Final Information",
+            "fields": [
+                {
+                    "type": "text",
+                    "label": "Notes",
+                    "options": []
+                }
+            ]
+        }
     ]
-  },
-  {
-    "title": "Autos",
-    "fields": [
-      {
-        "type": "text",
-        "label": "L4",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L3",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L2",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L1",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "Algae (Processor)",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "Algae (Net)",
-        "options": []
-      }
-    ]
-  },
-  {
-    "title": "Teleop",
-    "fields": [
-      {
-        "type": "text",
-        "label": "L4",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L3",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L2",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "L1",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "Algae (Processor)",
-        "options": []
-      },
-      {
-        "type": "text",
-        "label": "Algae (Net)",
-        "options": []
-      }
-    ]
-  },
-  {
-    "title": "Final Information",
-    "fields": [
-      {
-        "type": "text",
-        "label": "Notes",
-        "options": []
-      }
-    ]
-  }
-]
+}
