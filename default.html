@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FRC Scout Runner</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #00f7ff;
+            --background: #111111;
+            --surface: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .runner-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .config-selector {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .section {
+            background: var(--surface);
+            border-radius: 8px;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        button {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        input, select {
+            background: var(--background);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem;
+            border-radius: 6px;
+            min-width: 200px;
+        }
+
+        .counter-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .timer-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .export-options {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 2rem;
+        }
+
+        #qrCodeContainer {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="runner-container">
+        <div class="config-selector">
+            <h2>Scout Configuration</h2>
+            <div style="margin: 1rem 0">
+                <label>
+                    <input type="radio" name="configSource" value="default" checked> 
+                    Default Configuration
+                </label>
+                <label style="margin-left: 2rem">
+                    <input type="radio" name="configSource" value="custom">
+                    Custom Configuration
+                </label>
+            </div>
+            
+            <div id="defaultConfig">
+                <button onclick="loadDefaultConfig()">Load Current Season Config</button>
+            </div>
+            
+            <div id="customConfig" style="display: none; margin-top: 1rem">
+                <input type="file" id="configUpload" accept=".json">
+                <button onclick="document.getElementById('configUpload').click()">Choose File</button>
+            </div>
+        </div>
+
+        <div id="scoutForm"></div>
+
+        <div class="export-options">
+            <h3>Export Data</h3>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0">
+                <button onclick="exportCSV()">Download CSV</button>
+                <button onclick="generateQR()">Generate QR Code</button>
+                <button onclick="sendToDiscord()">Send to Discord</button>
+            </div>
+            <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" style="width: 100%">
+            <div id="qrCodeContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_CONFIG_URL = 'https://example.com/frc-current-season.json';
+        let currentConfig = [];
+        let activeTimers = new Map();
+
+        // Config loading
+        document.querySelectorAll('input[name="configSource"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                const isDefault = radio.value === 'default';
+                document.getElementById('defaultConfig').style.display = isDefault ? 'block' : 'none';
+                document.getElementById('customConfig').style.display = isDefault ? 'none' : 'block';
+            });
+        });
+
+        document.getElementById('configUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentConfig = JSON.parse(reader.result);
+                renderForm();
+            };
+            reader.readAsText(file);
+        });
+
+        async function loadDefaultConfig() {
+            try {
+                const response = await fetch(DEFAULT_CONFIG_URL);
+                currentConfig = await response.json();
+                renderForm();
+            } catch (error) {
+                alert('Error loading default config: ' + error.message);
+            }
+        }
+
+        // Form rendering
+        function renderForm() {
+            const form = document.getElementById('scoutForm');
+            form.innerHTML = '';
+            activeTimers.clear();
+
+            currentConfig.forEach(section => {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section';
+                sectionDiv.innerHTML = `<h3>${section.title}</h3>`;
+
+                section.fields.forEach(field => {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.style.margin = '1rem 0';
+
+                    switch(field.type) {
+                        case 'timer':
+                            fieldDiv.innerHTML = `
+                                <div class="timer-controls">
+                                    <label>${field.label}</label>
+                                    <button onclick="handleTimer('${field.label}', this)">Start</button>
+                                    <span id="timer-${field.label}">00:00</span>
+                                </div>
+                            `;
+                            break;
+                        case 'counter':
+                            fieldDiv.innerHTML = `
+                                <div class="counter-controls">
+                                    <label>${field.label}</label>
+                                    <button onclick="adjustCounter(this, -1)">-</button>
+                                    <input type="number" value="0" style="width: 80px">
+                                    <button onclick="adjustCounter(this, 1)">+</button>
+                                </div>
+                            `;
+                            break;
+                        case 'dropdown':
+                            fieldDiv.innerHTML = `
+                                <label>${field.label}</label>
+                                <select style="display: block; margin-top: 0.5rem">
+                                    ${field.options.map(o => `<option>${o}</option>`).join('')}
+                                </select>
+                            `;
+                            break;
+                        default:
+                            fieldDiv.innerHTML = `
+                                <label>${field.label}</label>
+                                <input type="${field.type}" style="display: block; margin-top: 0.5rem">
+                            `;
+                    }
+                    sectionDiv.appendChild(fieldDiv);
+                });
+                form.appendChild(sectionDiv);
+            });
+        }
+
+        // Timer functionality
+        function handleTimer(label, button) {
+            if (!activeTimers.has(label)) {
+                const startTime = Date.now();
+                activeTimers.set(label, {
+                    interval: setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                        document.getElementById(`timer-${label}`).textContent = 
+                            `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+                    }, 1000),
+                    running: true
+                });
+                button.textContent = 'Stop';
+            } else {
+                clearInterval(activeTimers.get(label).interval);
+                activeTimers.delete(label);
+                button.textContent = 'Start';
+            }
+        }
+
+        // Counter functionality
+        function adjustCounter(button, delta) {
+            const input = button.parentElement.querySelector('input');
+            input.value = parseInt(input.value) + delta;
+        }
+
+        // Export functionality
+        function collectData() {
+            const data = {};
+            document.querySelectorAll('input, select').forEach(element => {
+                const section = element.closest('.section').querySelector('h3').textContent;
+                const label = element.labels?.[0]?.textContent || element.parentElement.labels?.[0]?.textContent;
+                
+                if (label) {
+                    const value = element.type === 'checkbox' ? element.checked : element.value;
+                    data[`${section} - ${label}`] = value;
+                }
+            });
+            return data;
+        }
+
+        function exportCSV() {
+            const data = collectData();
+            const csvContent = Object.entries(data)
+                .map(([key, value]) => `"${key}","${value}"`)
+                .join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scout-data-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        }
+
+        function generateQR() {
+            const data = collectData();
+            const qrContent = JSON.stringify(data, null, 2);
+            
+            QRCode.toCanvas(qrContent, { width: 300 }, (err, canvas) => {
+                if (err) return alert('QR Generation Error: ' + err);
+                const container = document.getElementById('qrCodeContainer');
+                container.innerHTML = '';
+                container.appendChild(canvas);
+            });
+        }
+
+        async function sendToDiscord() {
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            if (!webhookUrl) return alert('Please enter a Discord webhook URL');
+            
+            const data = collectData();
+            const csvContent = Object.entries(data)
+                .map(([key, value]) => `"${key}","${value}"`)
+                .join('\n');
+
+            try {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: 'New scouting data:',
+                        files: [{
+                            attachment: Buffer.from(csvContent),
+                            name: 'scout-data.csv'
+                        }]
+                    })
+                });
+                alert('Data sent to Discord successfully!');
+            } catch (error) {
+                alert('Error sending to Discord: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
