@@ -125,11 +125,14 @@
         <div class="export-options">
             <h3>Export Data</h3>
             <div class="webhook-options">
-                <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" oninput="saveWebhook()">
+                <input type="url" id="webhookUrl" placeholder="Discord Webhook URL" required
+                       pattern="https://discord\.com/api/webhooks/.*"
+                       oninput="saveWebhook()">
             </div>
             <div style="display: flex; gap: 1rem; margin: 1rem 0">
-                <button onclick="exportCSV()">Download CSV</button>
-                <button onclick="sendToDiscord()">Send to Discord</button>
+                <button type="button" onclick="exportCSV()">Download CSV</button>
+                <button type="button" onclick="sendToDiscord()">Send to Discord</button>
+                <button type="button" onclick="pushToGitHub()">Save to GitHub</button>
             </div>
         </div>
     </div>
@@ -277,6 +280,20 @@
                 });
                 form.appendChild(sectionDiv);
             });
+        }
+
+        function validateForm() {
+            const form = document.getElementById('scoutingForm');
+            if (!form) return false;
+            const isValid = Array.from(form.elements).every(element => {
+                if (element.required && !element.value.trim()) {
+                    element.reportValidity();
+                    return false;
+                }
+                return true;
+            });
+            
+            return isValid;
         }
 
         function handleTimer(label, button) {
