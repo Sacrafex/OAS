@@ -156,12 +156,12 @@
                         <option value="text" ${type === 'text' ? 'selected' : ''}>Text</option>
                         <option value="counter" ${type === 'counter' ? 'selected' : ''}>Counter</option>
                         <option value="timer" ${type === 'timer' ? 'selected' : ''}>Timer</option>
-                        <option value="dropdown">Dropdown</option>
-                        <option value="checkbox">Checkbox</option>
+                        <option value="dropdown" ${type === 'dropdown' ? 'selected' : ''}>Dropdown</option>
+                        <option value="checkbox" ${type === 'checkbox' ? 'selected' : ''}>Checkbox</option>
                     </select>
                     <input type="text" class="field-label" placeholder="Field label">
-                    <div class="field-options" style="display: ${['dropdown'].includes(type) ? 'block' : 'none'}">
-                        <input type="text" placeholder="Options (comma separated)">
+                    <div class="field-options" style="display: ${['dropdown'].includes(type) ? 'flex' : 'none'}">
+                        <input type="text" placeholder="Options (comma separated)" ${['dropdown'].includes(type) ? 'required' : ''}>
                     </div>
                     <button class="danger" onclick="this.parentElement.remove()">✕</button>
                 </div>
@@ -176,22 +176,25 @@
 
         function updateFieldType(select) {
             const optionsDiv = select.parentElement.querySelector('.field-options');
-            optionsDiv.style.display = ['dropdown'].includes(select.value) ? 'block' : 'none';
+            optionsDiv.style.display = ['dropdown'].includes(select.value) ? 'flex' : 'none';
+            optionsDiv.querySelector('input').toggleAttribute('required', ['dropdown'].includes(select.value));
         }
 
         function saveConfig() {
-            const config = Array.from(document.querySelectorAll('.section')).map(section => ({
-                title: section.querySelector('.section-title').value,
-                fields: Array.from(section.querySelectorAll('.field')).map(field => {
-                    const type = field.querySelector('.field-type').value;
-                    return {
-                        type,
-                        label: field.querySelector('.field-label').value,
-                        options: type === 'dropdown' ? 
-                            field.querySelector('.field-options input').value.split(',').map(o => o.trim()) : []
-                    };
-                })
-            }));
+            const config = {
+                sections: Array.from(document.querySelectorAll('.section')).map(section => ({
+                    title: section.querySelector('.section-title').value,
+                    fields: Array.from(section.querySelectorAll('.field')).map(field => {
+                        const type = field.querySelector('.field-type').value;
+                        return {
+                            type,
+                            label: field.querySelector('.field-label').value,
+                            options: type === 'dropdown' ? 
+                                field.querySelector('.field-options input').value.split(',').map(o => o.trim()) : []
+                        };
+                    })
+                }))
+            };
 
             const data = JSON.stringify(config, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
@@ -209,7 +212,8 @@
             
             reader.onload = (e) => {
                 document.getElementById('sections').innerHTML = '';
-                JSON.parse(e.target.result).forEach(section => {
+                const configData = JSON.parse(e.target.result);
+                configData.sections.forEach(section => {
                     addSection();
                     const newSection = document.querySelector('.section:last-child');
                     newSection.querySelector('.section-title').value = section.title;
@@ -217,7 +221,7 @@
                         addField(field.type, newSection.dataset.id);
                         const newField = newSection.querySelector('.field:last-child');
                         newField.querySelector('.field-label').value = field.label;
-                        if(field.options) {
+                        if(field.options && field.options.length > 0) {
                             newField.querySelector('.field-options input').value = field.options.join(', ');
                         }
                     });
@@ -225,6 +229,10 @@
             };
             
             reader.readAsText(file);
+        }
+
+        function addFieldToSection(sectionId) {
+            addField('text', sectionId);
         }
     </script>
 </body>
