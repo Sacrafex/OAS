@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FRC Data Viewer</title>
+    <style>
+        :root {
+            --primary: #00f7ff;
+            --background: #111111;
+            --surface: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .viewer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .search-box {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        input, select, button {
+            background: var(--background);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-right: 1rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .loading {
+            display: none;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .error {
+            color: #ff4650;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <div class="search-box">
+            <h2>FRC Team Data Viewer</h2>
+            <input type="number" id="teamNumber" placeholder="Team Number" min="1">
+            <select id="year">
+                <option value="2024">2028</option>
+                <option value="2024">2027</option>
+                <option value="2023">2026</option>
+                <option value="2022">2025</option>
+            </select>
+            <button onclick="loadData()">Search</button>
+            <div class="loading" id="loading">Loading data...</div>
+            <div class="error" id="error"></div>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://sacrafex.github.io/OpenFRC/data';
+
+        async function loadData() {
+            const teamNumber = document.getElementById('teamNumber').value;
+            const year = document.getElementById('year').value;
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            const loading = document.getElementById('loading');
+
+            if (!teamNumber) {
+                error.textContent = 'Please enter a team number';
+                return;
+            }
+
+            results.innerHTML = '';
+            error.textContent = '';
+            loading.style.display = 'block';
+
+            try {
+                const csvUrl = `${BASE_URL}/${year}/${teamNumber}/data.csv`;
+                const response = await fetch(csvUrl);
+                
+                if (!response.ok) throw new Error('Data not found');
+                
+                const csvData = await response.text();
+                displayData(csvData);
+            } catch (err) {
+                error.textContent = `Error loading data: ${err.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayData(csv) {
+            const results = document.getElementById('results');
+            const rows = csv.split('\n');
+            const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const data = rows.slice(1);
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th>${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(row => `
+                            <tr>
+                                ${row.split(',').map(c => `<td>${c.trim().replace(/"/g, '')}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            results.innerHTML = tableHTML;
+        }
+    </script>
+</body>
+</html>
