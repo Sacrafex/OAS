@@ -126,14 +126,7 @@
         <div class="export-options">
             <h3>Export Data</h3>
             <div class="webhook-options">
-                <label>
-                    <input type="radio" name="webhookType" value="auto" checked> Auto
-                </label>
-                <label>
-                    <input type="radio" name="webhookType" value="custom"> Custom
-                </label>
-                <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" 
-                       style="display: none" oninput="saveWebhook()">
+                <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" oninput="saveWebhook()">
             </div>
             <div style="display: flex; gap: 1rem; margin: 1rem 0">
                 <button onclick="exportCSV()">Download CSV</button>
@@ -152,20 +145,11 @@
             try {
                 const response = await fetch(CONFIG_URL);
                 appConfig = await response.json();
-                document.querySelector('input[name="webhookType"][value="auto"]').checked = appConfig.default_export_method === 'auto';
                 loadWebhook();
             } catch (error) {
                 alert('Error loading application config: ' + error.message);
             }
         })();
-
-        document.querySelectorAll('input[name="webhookType"]').forEach(radio => {
-            radio.addEventListener('change', () => {
-                document.getElementById('webhookUrl').style.display = 
-                    radio.value === 'custom' ? 'block' : 'none';
-                if(radio.value === 'auto') document.getElementById('webhookUrl').value = '';
-            });
-        });
 
         function saveWebhook() {
             const url = document.getElementById('webhookUrl').value;
@@ -177,7 +161,6 @@
             if(match) document.getElementById('webhookUrl').value = decodeURIComponent(match[1]);
         }
 
-        // Config Loading
         document.querySelectorAll('input[name="configSource"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 const isDefault = radio.value === 'default';
@@ -296,7 +279,6 @@
             return data;
         }
 
-        // CSV Export
         function createCSV() {
             const data = collectData();
             const headers = Object.keys(data);
@@ -315,9 +297,7 @@
         }
 
         async function sendToDiscord() {
-            const webhookType = document.querySelector('input[name="webhookType"]:checked').value;
-            let webhookUrl = webhookType === 'auto' ? appConfig.discord_webhook : document.getElementById('webhookUrl').value;
-            
+            const webhookUrl = document.getElementById('webhookUrl').value;
             if(!webhookUrl) return alert('Please configure a webhook URL');
 
             const csvContent = createCSV();
