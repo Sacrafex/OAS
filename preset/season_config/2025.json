@@ -1,21 +1,6 @@
 {
     "sections": [
         {
-            "title": "Record Information",
-            "fields": [
-                {
-                    "type": "text",
-                    "label": "Name",
-                    "options": []
-                },
-                {
-                    "type": "text",
-                    "label": "Team Number",
-                    "options": []
-                }
-            ]
-        },
-        {
             "title": "Autos",
             "fields": [
                 {
