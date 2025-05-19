@@ -88,11 +88,10 @@
             margin-top: 2rem;
         }
 
-        .webhook-options {
-            margin: 1rem 0;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
+        .required::after {
+            content: "*";
+            color: #ff4650;
+            margin-left: 3px;
         }
     </style>
 </head>
@@ -143,9 +142,16 @@
 
         (async function init() {
             try {
+                const urlParams = new URLSearchParams(window.location.search);
                 const response = await fetch(CONFIG_URL);
                 appConfig = await response.json();
-                loadWebhook();
+                
+                if(urlParams.has('webhook')) {
+                    document.getElementById('webhookUrl').value = urlParams.get('webhook');
+                    saveWebhook();
+                } else {
+                    loadWebhook();
+                }
             } catch (error) {
                 alert('Error loading application config: ' + error.message);
             }
@@ -200,12 +206,19 @@
             form.innerHTML = '';
             activeTimers.clear();
 
-            if (!Array.isArray(currentConfig)) {
-                console.error('Invalid config format');
-                return;
-            }
+            const requiredFields = {
+                title: "Pre-Game Info",
+                fields: [
+                    { type: "text", label: "Your Name", options: [] },
+                    { type: "number", label: "Scouter Team Number", options: [] },
+                    { type: "number", label: "Team Number", options: [] },
+                    { type: "number", label: "Year", options: [], value: new Date().getFullYear() }
+                ]
+            };
 
-            currentConfig.forEach(section => {
+            const allSections = [requiredFields, ...currentConfig];
+
+            allSections.forEach(section => {
                 const sectionDiv = document.createElement('div');
                 sectionDiv.className = 'section';
                 sectionDiv.innerHTML = `<h3>${section.title}</h3>`;
@@ -214,11 +227,14 @@
                     const fieldDiv = document.createElement('div');
                     fieldDiv.style.margin = '1rem 0';
 
+                    const isRequired = section.title === "Pre-Game Info";
+                    const isYearField = field.label === "Year";
+
                     switch(field.type) {
                         case 'timer':
                             fieldDiv.innerHTML = `
                                 <div class="timer-controls">
-                                    <label>${field.label}</label>
+                                    <label class="${isRequired ? 'required' : ''}">${field.label}</label>
                                     <button onclick="handleTimer('${section.title}-${field.label}', this)">Start</button>
                                     <span id="timer-${section.title}-${field.label}">00:00</span>
                                 </div>
@@ -227,25 +243,34 @@
                         case 'counter':
                             fieldDiv.innerHTML = `
                                 <div class="counter-controls">
-                                    <label>${field.label}</label>
+                                    <label class="${isRequired ? 'required' : ''}">${field.label}</label>
                                     <button onclick="adjustCounter(this, -1)">-</button>
-                                    <input type="number" value="0" data-label="${section.title}|${field.label}" style="width: 80px">
+                                    <input type="number" value="0" 
+                                           data-label="${section.title}|${field.label}" 
+                                           style="width: 80px"
+                                           ${isRequired ? 'required' : ''}>
                                     <button onclick="adjustCounter(this, 1)">+</button>
                                 </div>
                             `;
                             break;
                         case 'dropdown':
                             fieldDiv.innerHTML = `
-                                <label>${field.label}</label>
-                                <select data-label="${section.title}|${field.label}" style="display: block; margin-top: 0.5rem">
+                                <label class="${isRequired ? 'required' : ''}">${field.label}</label>
+                                <select data-label="${section.title}|${field.label}" 
+                                        style="display: block; margin-top: 0.5rem"
+                                        ${isRequired ? 'required' : ''}>
                                     ${field.options.map(o => `<option>${o}</option>`).join('')}
                                 </select>
                             `;
                             break;
                         default:
                             fieldDiv.innerHTML = `
-                                <label>${field.label}</label>
-                                <input type="${field.type}" data-label="${section.title}|${field.label}" style="display: block; margin-top: 0.5rem">
+                                <label class="${isRequired ? 'required' : ''}">${field.label}</label>
+                                <input type="${field.type}" 
+                                       data-label="${section.title}|${field.label}" 
+                                       style="display: block; margin-top: 0.5rem"
+                                       ${isRequired ? 'required' : ''}
+                                       ${isYearField ? `value="${field.value}" readonly` : ''}>
                             `;
                     }
                     sectionDiv.appendChild(fieldDiv);
@@ -298,6 +323,8 @@
         }
 
         function exportCSV() {
+            if(!document.querySelector('form').reportValidity()) return;
+            
             const csvContent = createCSV();
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -308,6 +335,8 @@
         }
 
         async function sendToDiscord() {
+            if(!document.querySelector('form').reportValidity()) return;
+            
             const webhookUrl = document.getElementById('webhookUrl').value;
             if(!webhookUrl) return alert('Please configure a webhook URL');
 
