@@ -326,7 +326,8 @@
         }
 
         function exportCSV() {
-            if(!document.querySelector('form').reportValidity()) {
+            const form = document.getElementById('scoutingForm');
+            if (!form || !form.reportValidity()) {
                 alert('Please fill out all required fields');
                 return;
             }
@@ -344,7 +345,8 @@
         }
 
         async function sendToDiscord() {
-            if(!document.querySelector('form').reportValidity()) {
+            const form = document.getElementById('scoutingForm');
+            if (!form || !form.reportValidity()) {
                 alert('Please fill out all required fields');
                 return;
             }
