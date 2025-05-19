@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FRC Scout Editor</title>
+    <style>
+        :root {
+            --primary: #00f7ff;
+            --background: #111111;
+            --surface: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .editor-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--surface);
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+
+        .section {
+            background: var(--surface);
+            border-radius: 8px;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: transparent;
+            color: var(--text);
+            border: none;
+            padding: 0.5rem;
+            width: 300px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .field {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            background: var(--background);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        button {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .danger {
+            background: #ff4650;
+            color: white;
+        }
+
+        input, select {
+            background: var(--background);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem;
+            border-radius: 6px;
+            min-width: 200px;
+        }
+
+        .drag-handle {
+            cursor: move;
+            padding: 0.5rem;
+            opacity: 0.5;
+        }
+
+        .timer-field {
+            border-left: 4px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <div class="toolbar">
+            <button onclick="addSection()">+ Section</button>
+            <button onclick="addField('text')">+ Text</button>
+            <button onclick="addField('counter')">+ Counter</button>
+            <button onclick="addField('timer')">+ Timer</button>
+            <button onclick="saveConfig()">💾 Save Config</button>
+            <input type="file" id="loadConfig" onchange="loadConfig(event)" hidden>
+            <button onclick="document.getElementById('loadConfig').click()">📂 Load Config</button>
+        </div>
+
+        <div id="sections"></div>
+    </div>
+
+    <script>
+        let sections = [];
+
+        function addSection() {
+            const sectionId = Date.now();
+            const sectionHTML = `
+                <div class="section" data-id="${sectionId}">
+                    <div class="section-header">
+                        <input class="section-title" value="New Section" placeholder="Section title">
+                        <button class="danger" onclick="this.closest('.section').remove()">🗑 Delete</button>
+                    </div>
+                    <div class="section-fields"></div>
+                    <button onclick="addFieldToSection('${sectionId}')" style="margin-top: 1rem">+ Add Field</button>
+                </div>
+            `;
+            document.getElementById('sections').insertAdjacentHTML('beforeend', sectionHTML);
+        }
+
+        function addField(type, sectionId) {
+            const fieldHTML = `
+                <div class="field ${type === 'timer' ? 'timer-field' : ''}">
+                    <span class="drag-handle">☰</span>
+                    <select class="field-type" onchange="updateFieldType(this)">
+                        <option value="text" ${type === 'text' ? 'selected' : ''}>Text</option>
+                        <option value="counter" ${type === 'counter' ? 'selected' : ''}>Counter</option>
+                        <option value="timer" ${type === 'timer' ? 'selected' : ''}>Timer</option>
+                        <option value="dropdown">Dropdown</option>
+                        <option value="checkbox">Checkbox</option>
+                    </select>
+                    <input type="text" class="field-label" placeholder="Field label">
+                    <div class="field-options" style="display: ${['dropdown'].includes(type) ? 'block' : 'none'}">
+                        <input type="text" placeholder="Options (comma separated)">
+                    </div>
+                    <button class="danger" onclick="this.parentElement.remove()">✕</button>
+                </div>
+            `;
+
+            const targetSection = sectionId ? 
+                document.querySelector(`[data-id="${sectionId}"] .section-fields`) :
+                document.querySelector('.section:last-child .section-fields');
+                
+            targetSection.insertAdjacentHTML('beforeend', fieldHTML);
+        }
+
+        function updateFieldType(select) {
+            const optionsDiv = select.parentElement.querySelector('.field-options');
+            optionsDiv.style.display = ['dropdown'].includes(select.value) ? 'block' : 'none';
+        }
+
+        function saveConfig() {
+            const config = Array.from(document.querySelectorAll('.section')).map(section => ({
+                title: section.querySelector('.section-title').value,
+                fields: Array.from(section.querySelectorAll('.field')).map(field => {
+                    const type = field.querySelector('.field-type').value;
+                    return {
+                        type,
+                        label: field.querySelector('.field-label').value,
+                        options: type === 'dropdown' ? 
+                            field.querySelector('.field-options input').value.split(',').map(o => o.trim()) : []
+                    };
+                })
+            }));
+
+            const data = JSON.stringify(config, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scout-config-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        function loadConfig(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                document.getElementById('sections').innerHTML = '';
+                JSON.parse(e.target.result).forEach(section => {
+                    addSection();
+                    const newSection = document.querySelector('.section:last-child');
+                    newSection.querySelector('.section-title').value = section.title;
+                    section.fields.forEach(field => {
+                        addField(field.type, newSection.dataset.id);
+                        const newField = newSection.querySelector('.field:last-child');
+                        newField.querySelector('.field-label').value = field.label;
+                        if(field.options) {
+                            newField.querySelector('.field-options input').value = field.options.join(', ');
+                        }
+                    });
+                });
+            };
+            
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
