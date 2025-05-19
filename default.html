@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>FRC Scout Runner</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <style>
         :root {
             --primary: #00f7ff;
@@ -89,8 +88,11 @@
             margin-top: 2rem;
         }
 
-        #qrCodeContainer {
-            margin-top: 1rem;
+        .webhook-options {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
         }
     </style>
 </head>
@@ -123,22 +125,59 @@
 
         <div class="export-options">
             <h3>Export Data</h3>
+            <div class="webhook-options">
+                <label>
+                    <input type="radio" name="webhookType" value="auto" checked> Auto
+                </label>
+                <label>
+                    <input type="radio" name="webhookType" value="custom"> Custom
+                </label>
+                <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" 
+                       style="display: none" oninput="saveWebhook()">
+            </div>
             <div style="display: flex; gap: 1rem; margin: 1rem 0">
                 <button onclick="exportCSV()">Download CSV</button>
-                <button onclick="generateQR()">Generate QR Code</button>
                 <button onclick="sendToDiscord()">Send to Discord</button>
             </div>
-            <input type="text" id="webhookUrl" placeholder="Discord Webhook URL" style="width: 100%">
-            <div id="qrCodeContainer"></div>
         </div>
     </div>
 
     <script>
-        const DEFAULT_CONFIG_URL = 'https://example.com/frc-current-season.json';
+        const CONFIG_URL = 'https://raw.githubusercontent.com/Sacrafex/OpenFRC/main/config.json';
+        let appConfig = {};
         let currentConfig = [];
         let activeTimers = new Map();
 
-        // Config loading
+        (async function init() {
+            try {
+                const response = await fetch(CONFIG_URL);
+                appConfig = await response.json();
+                document.querySelector('input[name="webhookType"][value="auto"]').checked = appConfig.default_export_method === 'auto';
+                loadWebhook();
+            } catch (error) {
+                alert('Error loading application config: ' + error.message);
+            }
+        })();
+
+        document.querySelectorAll('input[name="webhookType"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.getElementById('webhookUrl').style.display = 
+                    radio.value === 'custom' ? 'block' : 'none';
+                if(radio.value === 'auto') document.getElementById('webhookUrl').value = '';
+            });
+        });
+
+        function saveWebhook() {
+            const url = document.getElementById('webhookUrl').value;
+            if(url) document.cookie = `webhookUrl=${encodeURIComponent(url)};path=/;max-age=31536000`;
+        }
+
+        function loadWebhook() {
+            const match = document.cookie.match(/webhookUrl=([^;]+)/);
+            if(match) document.getElementById('webhookUrl').value = decodeURIComponent(match[1]);
+        }
+
+        // Config Loading
         document.querySelectorAll('input[name="configSource"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 const isDefault = radio.value === 'default';
@@ -159,7 +198,7 @@
 
         async function loadDefaultConfig() {
             try {
-                const response = await fetch(DEFAULT_CONFIG_URL);
+                const response = await fetch(appConfig.current_season_config);
                 currentConfig = await response.json();
                 renderForm();
             } catch (error) {
@@ -167,7 +206,6 @@
             }
         }
 
-        // Form rendering
         function renderForm() {
             const form = document.getElementById('scoutForm');
             form.innerHTML = '';
@@ -187,8 +225,8 @@
                             fieldDiv.innerHTML = `
                                 <div class="timer-controls">
                                     <label>${field.label}</label>
-                                    <button onclick="handleTimer('${field.label}', this)">Start</button>
-                                    <span id="timer-${field.label}">00:00</span>
+                                    <button onclick="handleTimer('${section.title}-${field.label}', this)">Start</button>
+                                    <span id="timer-${section.title}-${field.label}">00:00</span>
                                 </div>
                             `;
                             break;
@@ -197,7 +235,7 @@
                                 <div class="counter-controls">
                                     <label>${field.label}</label>
                                     <button onclick="adjustCounter(this, -1)">-</button>
-                                    <input type="number" value="0" style="width: 80px">
+                                    <input type="number" value="0" data-label="${section.title}|${field.label}" style="width: 80px">
                                     <button onclick="adjustCounter(this, 1)">+</button>
                                 </div>
                             `;
@@ -205,7 +243,7 @@
                         case 'dropdown':
                             fieldDiv.innerHTML = `
                                 <label>${field.label}</label>
-                                <select style="display: block; margin-top: 0.5rem">
+                                <select data-label="${section.title}|${field.label}" style="display: block; margin-top: 0.5rem">
                                     ${field.options.map(o => `<option>${o}</option>`).join('')}
                                 </select>
                             `;
@@ -213,7 +251,7 @@
                         default:
                             fieldDiv.innerHTML = `
                                 <label>${field.label}</label>
-                                <input type="${field.type}" style="display: block; margin-top: 0.5rem">
+                                <input type="${field.type}" data-label="${section.title}|${field.label}" style="display: block; margin-top: 0.5rem">
                             `;
                     }
                     sectionDiv.appendChild(fieldDiv);
@@ -222,7 +260,6 @@
             });
         }
 
-        // Timer functionality
         function handleTimer(label, button) {
             if (!activeTimers.has(label)) {
                 const startTime = Date.now();
@@ -242,34 +279,34 @@
             }
         }
 
-        // Counter functionality
         function adjustCounter(button, delta) {
             const input = button.parentElement.querySelector('input');
             input.value = parseInt(input.value) + delta;
         }
 
-        // Export functionality
         function collectData() {
             const data = {};
-            document.querySelectorAll('input, select').forEach(element => {
-                const section = element.closest('.section').querySelector('h3').textContent;
-                const label = element.labels?.[0]?.textContent || element.parentElement.labels?.[0]?.textContent;
-                
-                if (label) {
-                    const value = element.type === 'checkbox' ? element.checked : element.value;
-                    data[`${section} - ${label}`] = value;
-                }
+            document.querySelectorAll('[data-label]').forEach(element => {
+                const [section, label] = element.dataset.label.split('|');
+                const value = element.type === 'checkbox' ? element.checked : 
+                            element.tagName === 'SELECT' ? element.options[element.selectedIndex].text :
+                            element.value;
+                data[`${section} - ${label}`] = value;
             });
             return data;
         }
 
-        function exportCSV() {
+        // CSV Export
+        function createCSV() {
             const data = collectData();
-            const csvContent = Object.entries(data)
-                .map(([key, value]) => `"${key}","${value}"`)
-                .join('\n');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const headers = Object.keys(data);
+            const values = headers.map(header => `"${String(data[header]).replace(/"/g, '""')}"`);
+            return `${headers.join(',')}\n${values.join(',')}`;
+        }
+
+        function exportCSV() {
+            const csvContent = createCSV();
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -277,39 +314,26 @@
             a.click();
         }
 
-        function generateQR() {
-            const data = collectData();
-            const qrContent = JSON.stringify(data, null, 2);
-            
-            QRCode.toCanvas(qrContent, { width: 300 }, (err, canvas) => {
-                if (err) return alert('QR Generation Error: ' + err);
-                const container = document.getElementById('qrCodeContainer');
-                container.innerHTML = '';
-                container.appendChild(canvas);
-            });
-        }
-
         async function sendToDiscord() {
-            const webhookUrl = document.getElementById('webhookUrl').value;
-            if (!webhookUrl) return alert('Please enter a Discord webhook URL');
+            const webhookType = document.querySelector('input[name="webhookType"]:checked').value;
+            let webhookUrl = webhookType === 'auto' ? appConfig.discord_webhook : document.getElementById('webhookUrl').value;
             
-            const data = collectData();
-            const csvContent = Object.entries(data)
-                .map(([key, value]) => `"${key}","${value}"`)
-                .join('\n');
+            if(!webhookUrl) return alert('Please configure a webhook URL');
+
+            const csvContent = createCSV();
+            const formData = new FormData();
+            const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            formData.append('file', csvBlob, 'scout-data.csv');
+            formData.append('content', 'New scouting data:');
 
             try {
-                await fetch(webhookUrl, {
+                const response = await fetch(webhookUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: 'New scouting data:',
-                        files: [{
-                            attachment: Buffer.from(csvContent),
-                            name: 'scout-data.csv'
-                        }]
-                    })
+                    body: formData
                 });
+
+                if(!response.ok) throw new Error(`Discord error: ${response.status}`);
                 alert('Data sent to Discord successfully!');
             } catch (error) {
                 alert('Error sending to Discord: ' + error.message);
