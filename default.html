@@ -173,8 +173,13 @@
             const file = e.target.files[0];
             const reader = new FileReader();
             reader.onload = () => {
-                currentConfig = JSON.parse(reader.result);
-                renderForm();
+                try {
+                    const configData = JSON.parse(reader.result);
+                    currentConfig = configData.sections;
+                    renderForm();
+                } catch (parseError) {
+                    alert('Error parsing config file: ' + parseError.message);
+                }
             };
             reader.readAsText(file);
         });
@@ -182,7 +187,8 @@
         async function loadDefaultConfig() {
             try {
                 const response = await fetch(appConfig.current_season_config);
-                currentConfig = await response.json();
+                const configData = await response.json();
+                currentConfig = configData.sections;
                 renderForm();
             } catch (error) {
                 alert('Error loading default config: ' + error.message);
@@ -193,6 +199,11 @@
             const form = document.getElementById('scoutForm');
             form.innerHTML = '';
             activeTimers.clear();
+
+            if (!Array.isArray(currentConfig)) {
+                console.error('Invalid config format');
+                return;
+            }
 
             currentConfig.forEach(section => {
                 const sectionDiv = document.createElement('div');
