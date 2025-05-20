@@ -8,7 +8,7 @@ Live Links:
 
 To-Do: 
 
-Find a way to host the Files instead of Discord
+Work on a backend PHP-Based Server to host the files.
 
 Improve Styling
 
