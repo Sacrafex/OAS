@@ -8,7 +8,7 @@ Live Links:
 
 To-Do: 
 
-Make it use GitHub's REST API instead of Discord.
+Find a way to host the Files instead of Discord
 
 Improve Styling
 
